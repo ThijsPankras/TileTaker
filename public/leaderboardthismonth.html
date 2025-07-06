@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TileTaker - This Month</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Lucide icon loader -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      background: #f9f9f9;
+    }
+
+    #menu-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 180px;
+      height: 100%;
+      background: #333;
+      color: #fff;
+      padding-top: 20px;
+      z-index: 9999;
+    }
+
+    #menu-container a {
+      color: #fff;
+      padding: 12px 20px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      font-size: 16px;
+    }
+
+    #menu-container a:hover {
+      background: #444;
+    }
+
+    #menu-container i {
+      margin-right: 10px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .page-content {
+      margin-left: 200px;
+      padding: 20px;
+      max-width: 900px;
+    }
+
+    h1 {
+      margin-bottom: 0.5em;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background: white;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px 14px;
+      text-align: left;
+    }
+
+    th {
+      background: #eee;
+    }
+
+    td span.color-box {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 6px;
+      vertical-align: middle;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="menu-container"></div>
+
+<div class="page-content">
+  <h1>📅 Tiles Claimed This Month</h1>
+  <div id="monthly-leaderboard"></div>
+</div>
+
+<script>
+  // Load shared menu
+  fetch('/partials/menu.html')
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById('menu-container').innerHTML = html;
+      lucide.createIcons();
+    });
+
+  fetch('/data')
+    .then(res => res.json())
+    .then(data => {
+      const startOfMonth = new Date();
+      startOfMonth.setDate(1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      // Count new tiles per user this month
+      const monthTilesByUser = {};
+
+      data.tiles.forEach(tile => {
+        const tileDate = new Date(tile.timestamp);
+        if (tileDate >= startOfMonth) {
+          if (!monthTilesByUser[tile.owner]) {
+            monthTilesByUser[tile.owner] = 0;
+          }
+          monthTilesByUser[tile.owner]++;
+        }
+      });
+
+      // Map to array with user colors and sort
+      const sortedUsers = Object.entries(monthTilesByUser)
+        .map(([name, count]) => {
+          const user = data.users.find(u => u.name === name);
+          return {
+            name,
+            count,
+            color: user?.color || '#000'
+          };
+        })
+        .sort((a, b) => b.count - a.count);
+
+      let html = '<table><tr><th>User</th><th>Tiles Claimed</th></tr>';
+      sortedUsers.forEach(u => {
+        html += `<tr>
+          <td><span class="color-box" style="background:${u.color};"></span>${u.name}</td>
+          <td>${u.count}</td>
+        </tr>`;
+      });
+      html += '</table>';
+      document.getElementById('monthly-leaderboard').innerHTML = html;
+    })
+    .catch(err => {
+      document.body.innerHTML = '<p style="color:red">⚠️ Failed to load leaderboard data.</p>';
+      console.error(err);
+    });
+</script>
+
+</body>
+</html>

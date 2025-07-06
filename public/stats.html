@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TileTaker – Personal Stats</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Chart.js & Lucide -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f5f5f5;
+    }
+
+    #menu-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 180px;
+      height: 100%;
+      background: #333;
+      color: #fff;
+      padding-top: 20px;
+      z-index: 9999;
+    }
+
+    #menu-container a {
+      color: #fff;
+      padding: 12px 20px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      font-size: 16px;
+    }
+
+    #menu-container a:hover {
+      background: #444;
+    }
+
+    #menu-container i {
+      margin-right: 10px;
+      width: 20px;
+      height: 20px;
+    }
+
+    #stats-container {
+      margin-left: 200px;
+      padding: 20px;
+      max-width: 1000px;
+    }
+
+    .stat-box {
+      background: white;
+      margin-bottom: 20px;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.1);
+    }
+
+    canvas {
+      width: 100% !important;
+      max-height: 300px;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 18px;
+    }
+
+    #summary p {
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+
+<div id="menu-container"></div>
+
+<div id="stats-container">
+  <div class="stat-box" id="summary"></div>
+  <div class="stat-box"><h2>📈 Tiles per Day</h2><canvas id="tilesPerDay"></canvas></div>
+  <div class="stat-box"><h2>📅 Km per Week</h2><canvas id="kmPerWeek"></canvas></div>
+  <div class="stat-box"><h2>📅 Km per Year</h2><canvas id="kmPerYear"></canvas></div>
+  <div class="stat-box"><h2>📊 Ride Count vs Distance</h2><canvas id="ridesVsDistance"></canvas></div>
+  <div class="stat-box"><h2>📆 Day of Week Activity</h2><canvas id="dayOfWeekChart"></canvas></div>
+  <div class="stat-box"><h2>🧭 Geographic Spread</h2><div id="boundsBox"></div></div>
+  <div class="stat-box"><h2>🚴 Longest Ride Distance</h2><div id="longestDistance"></div></div>
+  <div class="stat-box"><h2>⚡ Max Speed Achieved</h2><div id="maxSpeed"></div></div>
+  <div class="stat-box"><h2>📏 Total Distance</h2><div id="totalDistance"></div></div>
+  <div class="stat-box"><h2>🕓 Total Ride Time</h2><div id="totalTime"></div></div>
+  <div class="stat-box"><h2>🌄 Average Elevation Gain</h2><div id="avgElevation"></div></div>
+  <div class="stat-box"><h2>📍 Most Frequent Start Location</h2><div id="startLoc"></div></div>
+  <div class="stat-box"><h2>🗓️ First Activity Date</h2><div id="firstDate"></div></div>
+  <div class="stat-box"><h2>⏳ Last Activity Date</h2><div id="lastDate"></div></div>
+  <div class="stat-box"><h2>📅 Streak: Most Consecutive Active Days</h2><div id="streak"></div></div>
+  <div class="stat-box"><h2>🎯 Avg. Speed</h2><div id="avgSpeed"></div></div>
+  <div class="stat-box"><h2>📍 Total Unique Start Locations</h2><div id="startCount"></div></div>
+  <div class="stat-box"><h2>🧱 Tiles per 100 km</h2><div id="tilesPer100km"></div></div>
+  <div class="stat-box"><h2>🏆 Personal Tile Record (Most in a Day)</h2><div id="tilesOneDay"></div></div>
+  <div class="stat-box"><h2>🔥 Busiest Week (Total Activities)</h2><div id="busiestWeek"></div></div>
+  <div class="stat-box"><h2>🥵 Highest Elevation Ride</h2><div id="maxElev"></div></div>
+  <div class="stat-box"><h2>🧭 Distance North–South vs East–West</h2><div id="nsvswe"></div></div>
+</div>
+
+<script>
+  // Load shared sidebar menu
+  fetch('/partials/menu.html')
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById('menu-container').innerHTML = html;
+      lucide.createIcons();
+    });
+</script>
+<script src="/stats.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TileTaker Leaderboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Lucide icon loader -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      background: #f9f9f9;
+    }
+
+    #menu-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 180px;
+      height: 100%;
+      background: #333;
+      color: #fff;
+      padding-top: 20px;
+      z-index: 9999;
+    }
+
+    #menu-container a {
+      color: #fff;
+      padding: 12px 20px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      font-size: 16px;
+    }
+
+    #menu-container a:hover {
+      background: #444;
+    }
+
+    #menu-container i {
+      margin-right: 10px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .page-content {
+      margin-left: 200px;
+      padding: 20px;
+      max-width: 900px;
+    }
+
+    h1 {
+      margin-bottom: 0.5em;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      background: white;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px 14px;
+      text-align: left;
+    }
+
+    th {
+      background: #eee;
+    }
+
+    td span.color-box {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 6px;
+      vertical-align: middle;
+      border-radius: 2px;
+    }
+
+    .summary, .fun-facts, .extra-leaderboards {
+      margin-top: 2em;
+      background: #fff;
+      padding: 10px 20px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+
+    .section-title {
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="menu-container"></div>
+
+<div class="page-content">
+  <h1>🏆 TileTaker Leaderboard</h1>
+  <div id="leaderboard-table"></div>
+  <div id="summary" class="summary"></div>
+  <div id="fun-facts" class="fun-facts"></div>
+  <div id="extra-leaderboards" class="extra-leaderboards"></div>
+</div>
+
+<script>
+  // Load shared menu
+  fetch('/partials/menu.html')
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById('menu-container').innerHTML = html;
+      lucide.createIcons();
+    });
+
+  fetch('/data')
+    .then(res => res.json())
+    .then(data => {
+      const users = data.users.slice().sort((a, b) => b.tileCount - a.tileCount);
+      const totalTiles = data.tiles.length;
+
+      let html = '<table><tr><th>User</th><th>Tiles</th><th>Activities</th><th>Last Tile</th></tr>';
+      users.forEach(u => {
+        const last = u.lastTileTimestamp ? new Date(u.lastTileTimestamp).toLocaleDateString() : '—';
+        html += `<tr>
+          <td><span class="color-box" style="background:${u.color};"></span>${u.name}</td>
+          <td>${u.tileCount}</td>
+          <td>${u.activityCount}</td>
+          <td>${last}</td>
+        </tr>`;
+      });
+      html += '</table>';
+      document.getElementById('leaderboard-table').innerHTML = html;
+
+      const mostActive = users.reduce((a, b) => a.activityCount > b.activityCount ? a : b);
+      const mostRecent = users.reduce((a, b) =>
+        new Date(a.lastTileTimestamp || 0) > new Date(b.lastTileTimestamp || 0) ? a : b
+      );
+      const oldestTileDate = data.tiles.reduce((min, t) => {
+        const ts = new Date(t.timestamp);
+        return ts < new Date(min) ? ts.toISOString() : min;
+      }, new Date().toISOString());
+
+      let summary = `
+        <div class="section-title">📊 Summary</div>
+        <p><strong>Total Unique Tiles Claimed:</strong> ${totalTiles}</p>
+        <p><strong>Most Active User:</strong> ${mostActive.name} (${mostActive.activityCount} activities)</p>
+        <p><strong>Most Recently Active:</strong> ${mostRecent.name} (${new Date(mostRecent.lastTileTimestamp).toLocaleDateString()})</p>
+        <p><strong>Oldest Tile Claimed On:</strong> ${new Date(oldestTileDate).toLocaleDateString()}</p>
+      `;
+      document.getElementById('summary').innerHTML = summary;
+
+      let facts = [
+        `👣 Average tiles per activity: ${(totalTiles / users.reduce((s,u)=>s+u.activityCount,0)).toFixed(2)}`,
+        `🏁 Fastest tile claimer: ${mostRecent.name}`,
+        `📅 First tile ever claimed: ${new Date(oldestTileDate).toLocaleDateString()}`,
+        `🧑‍🤝‍🧑 Total number of participants: ${users.length}`,
+        `🖍️ Most colorful leaderboard: ${[...new Set(users.map(u => u.color))].length} unique colors`,
+        `📈 Top 3: ${users.slice(0,3).map(u => u.name).join(', ')}`,
+        `🧱 Avg. tiles per user: ${(totalTiles / users.length).toFixed(1)}`,
+        `📍 Bounds: SW (${data.bounds.minLat.toFixed(2)}, ${data.bounds.minLon.toFixed(2)}), NE (${data.bounds.maxLat.toFixed(2)}, ${data.bounds.maxLon.toFixed(2)})`,
+        `🗓️ Days since oldest tile: ${Math.floor((Date.now() - new Date(oldestTileDate)) / 86400000)} days`,
+        `😴 Longest inactivity streak: TBD`
+      ];
+
+      let factsHtml = '<div class="section-title">🎉 Fun Stats</div><ul>';
+      facts.forEach(f => factsHtml += `<li>${f}</li>`);
+      factsHtml += '</ul>';
+      document.getElementById('fun-facts').innerHTML = factsHtml;
+
+      document.getElementById('extra-leaderboards').innerHTML = `
+        <div class="section-title">⏱️ Coming Soon</div>
+        <ul>
+          <li>📅 Most tiles this week</li>
+          <li>📅 Most tiles this month</li>
+          <li>📅 Most tiles this year</li>
+          <li>📍 Largest single-day tile grab</li>
+          <li>📉 Most dramatic drop in activity</li>
+        </ul>
+      `;
+    })
+    .catch(err => {
+      document.body.innerHTML = '<p style="color:red">⚠️ Failed to load leaderboard data.</p>';
+      console.error(err);
+    });
+</script>
+
+</body>
+</html>
