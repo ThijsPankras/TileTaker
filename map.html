@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TileTaker Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Leaflet CSS and JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- Lucide icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+    }
+
+    #menu-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 180px;
+      height: 100%;
+      background: #333;
+      color: #fff;
+      padding-top: 20px;
+      z-index: 9999;
+    }
+
+    #menu-container a {
+      color: #fff;
+      padding: 12px 20px;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      font-size: 16px;
+    }
+
+    #menu-container a:hover {
+      background: #444;
+    }
+
+    #menu-container i {
+      margin-right: 10px;
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Adjust map to leave space for sidebar */
+    #map {
+      margin-left: 180px;
+      height: 100vh;
+      width: calc(100% - 180px);
+    }
+
+    #leaderboard {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #fff;
+      border: 1px solid #333;
+      padding: 5px 10px;
+      font: 14px/1.5 sans-serif;
+      z-index: 1000;
+      opacity: 0.9;
+    }
+
+    #leaderboard ul {
+      list-style: none;
+      margin: 5px 0 0;
+      padding: 0;
+    }
+
+    #leaderboard li {
+      margin: 2px 0;
+    }
+
+    .color-box {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 5px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+
+<div id="menu-container"></div>
+<div id="map"></div>
+<div id="leaderboard"></div>
+
+<script>
+  // Load shared menu
+  fetch('/partials/menu.html')
+    .then(res => res.text())
+    .then(html => {
+      document.getElementById('menu-container').innerHTML = html;
+      lucide.createIcons();
+    });
+
+  // Fetch data from the server and initialize the map
+  fetch('/data')
+    .then(response => response.json())
+    .then(data => {
+      var map = L.map('map');
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 18,
+        attribution: '© OpenStreetMap'
+      }).addTo(map);
+
+      if (data.bounds && data.bounds.minLat !== undefined) {
+        var sw = [data.bounds.minLat, data.bounds.minLon];
+        var ne = [data.bounds.maxLat, data.bounds.maxLon];
+        map.fitBounds([sw, ne]);
+      } else {
+        map.setView([0, 0], 2);
+      }
+
+      var userColors = {};
+      data.users.forEach(u => {
+        userColors[u.name] = u.color;
+      });
+
+      data.users.forEach(u => {
+        if (u.routes) {
+          u.routes.forEach(route => {
+            L.polyline(route, {
+              color: u.color,
+              weight: 3,
+              opacity: 1.0
+            }).addTo(map);
+          });
+        }
+      });
+
+      function tile2lon(x, z) {
+        return (x / Math.pow(2, z) * 360 - 180);
+      }
+      function tile2lat(y, z) {
+        var n = Math.PI - 2 * Math.PI * y / Math.pow(2, z);
+        return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+      }
+
+      data.tiles.forEach(tile => {
+        var owner = tile.owner;
+        var color = userColors[owner] || '#000';
+        var x = tile.x, y = tile.y, z = 14;
+        var north = tile2lat(y, z);
+        var west = tile2lon(x, z);
+        var south = tile2lat(y + 1, z);
+        var east = tile2lon(x + 1, z);
+        L.rectangle([[south, west], [north, east]], {
+          color: color,
+          fillColor: color,
+          fillOpacity: 0.4,
+          weight: 1
+        }).bindPopup(`Tile owner: ${owner}`).addTo(map);
+      });
+
+      var leaderboardDiv = document.getElementById('leaderboard');
+      var usersSorted = data.users.slice().sort((a, b) => b.tileCount - a.tileCount);
+      var lbHtml = '<strong>Tiles Claimed</strong><ul>';
+      usersSorted.forEach(u => {
+        lbHtml += `<li><span class="color-box" style="background:${u.color};"></span>`
+               + `${u.name}: ${u.tileCount} tiles</li>`;
+      });
+      lbHtml += '</ul>';
+      leaderboardDiv.innerHTML = lbHtml;
+    })
+    .catch(err => {
+      console.error('Error loading data:', err);
+    });
+</script>
+
+</body>
+</html>
